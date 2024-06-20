@@ -8,32 +8,11 @@ from func_helpers import available_functions, function_descriptions # I am "outs
 import matplotlib
 import pandas as pd
 import os
-#
-# Define the simulation data directory
-SIM_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sim_data")
-EXCEL_FILE_PATH = os.path.join(SIM_DATA_DIR, "simulations.xlsx")
-#
 
-# -------------------------------------------
-# import environment variables from .env if not in st.session_state
-# -------------------------------------------
-if "azure_endpoint" not in st.session_state.keys():
-    load_dotenv(find_dotenv(".env"))
-    import os
-
-    azure_endpoint = os.getenv("GPT35_AZURE_ENDPOINT")
-    api_key = os.getenv("GPT35_AZURE_API_KEY")
-    api_version = "2023-10-01-preview"#"2023-09-01-preview"#"2023-05-15"
-    
-    # create client executing llm
-    client = AzureOpenAI(
-        azure_endpoint = azure_endpoint,
-        api_key = api_key,
-        api_version = api_version
-    )
-    model = "gpt35turbo_autoupdate" # = deployment name
-    #model = "gpt-4-turbo"  
-
+# import paths from central config
+from config import SIM_DATA_DIR, EXCEL_FILE_PATH
+# import api client from central config
+from config import client, DEPLOYMENT_NAME
 
 # -------------------------------------------
 # frontend helper functions
@@ -155,7 +134,7 @@ if st.session_state.messages[-1]["role"] != "assistant":
     with st.chat_message("assistant"):#, avatar=bot_avatar):
         with st.spinner("Thinking..."):
             response = client.chat.completions.create(
-                model=model,
+                model=DEPLOYMENT_NAME,
                 messages=st.session_state.messages,
                 temperature=0.0,
                 stream=False,
@@ -200,7 +179,7 @@ if st.session_state.messages[-1]["role"] != "assistant":
                     
                 # Call the API again to get the final response from the model
                 second_response = client.chat.completions.create(
-                        model=model,
+                        model=DEPLOYMENT_NAME,
                         messages=st.session_state.messages,
                         temperature=0.0,
                         #stream=False,

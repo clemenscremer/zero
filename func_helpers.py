@@ -1,20 +1,23 @@
 import os
 import pandas as pd
 import mikeio
+# import paths from central config
+from config import BASE_DIR, SIM_DATA_DIR, DOMAIN_DIR, INITIAL_DIR, SETUP_DIR, BOUNDARIES_DIR, RESULTS_DIR, FIGURE_DIR
+
 
 # Define the base directory for the application
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Define the simulation data directory relative to the application
-SIM_DATA_DIR = os.path.join(BASE_DIR, "sim_data")
+#SIM_DATA_DIR = os.path.join(BASE_DIR, "sim_data")
 
 # Define the subdirectories within the simulation data directory
-DOMAIN_DIR = os.path.join(SIM_DATA_DIR, "domain")
-INITIAL_DIR = os.path.join(SIM_DATA_DIR, "initial")
-SETUP_DIR = os.path.join(SIM_DATA_DIR, "setup")
-BOUNDARIES_DIR = os.path.join(SIM_DATA_DIR, "boundaries")
-RESULTS_DIR = os.path.join(SIM_DATA_DIR, "results")
-FIGURE_DIR = os.path.join(SIM_DATA_DIR, "figures")
+#DOMAIN_DIR = os.path.join(SIM_DATA_DIR, "domain")
+#INITIAL_DIR = os.path.join(SIM_DATA_DIR, "initial")
+#SETUP_DIR = os.path.join(SIM_DATA_DIR, "setup")
+#BOUNDARIES_DIR = os.path.join(SIM_DATA_DIR, "boundaries")
+#RESULTS_DIR = os.path.join(SIM_DATA_DIR, "results")
+#FIGURE_DIR = os.path.join(SIM_DATA_DIR, "figures")
 
 
 
