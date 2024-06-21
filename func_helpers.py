@@ -1,26 +1,11 @@
 import os
 import pandas as pd
 import mikeio
+import base64
 # import paths from central config
 from config import BASE_DIR, SIM_DATA_DIR, DOMAIN_DIR, INITIAL_DIR, SETUP_DIR, BOUNDARIES_DIR, RESULTS_DIR, FIGURE_DIR
-
-
-# Define the base directory for the application
-#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Define the simulation data directory relative to the application
-#SIM_DATA_DIR = os.path.join(BASE_DIR, "sim_data")
-
-# Define the subdirectories within the simulation data directory
-#DOMAIN_DIR = os.path.join(SIM_DATA_DIR, "domain")
-#INITIAL_DIR = os.path.join(SIM_DATA_DIR, "initial")
-#SETUP_DIR = os.path.join(SIM_DATA_DIR, "setup")
-#BOUNDARIES_DIR = os.path.join(SIM_DATA_DIR, "boundaries")
-#RESULTS_DIR = os.path.join(SIM_DATA_DIR, "results")
-#FIGURE_DIR = os.path.join(SIM_DATA_DIR, "figures")
-
-
-
+# import api client from central config
+from config import client, DEPLOYMENT_NAME
 
 # --------------------------------------------------
 # function definitions
@@ -361,7 +346,85 @@ def plot_results(result_file, n_times=3):
     fig.suptitle(f"Simulation data from {result_file}")
     output_fn = result_file.replace(".dfsu", ".png")
     fig.savefig(os.path.join(FIGURE_DIR, result_file.replace(".dfsu", ".png")))
-    return f"Plots saved to {FIGURE_DIR} as {output_fn}"
+    return fig #f"Plots saved to {FIGURE_DIR} as {output_fn}"
+
+
+
+# Evaluation
+def encode_image(image_path):
+    """Encodes an image to a base64 string."""
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode("utf-8")
+
+def analyze_images(image_filenames, added_context):
+    """
+    Analyzes one or more images using GPT-4.
+
+    Parameters:
+    image_filenames (list): A list of image filenames to be analyzed.
+    added_context (str): Additional context to provide to the LLM, e.g. parameters of simulations.
+
+    Returns:
+    str: The response message from GPT-4.
+    """
+    
+    # Ensure image_filenames is a list even if a single filename is provided
+    if isinstance(image_filenames, str):
+        image_filenames = [image_filenames]
+
+    # Full paths to images
+    image_paths = [os.path.join(FIGURE_DIR, filename) for filename in image_filenames]
+
+    # Encode images and prepare them for the prompt
+    base64_images = [encode_image(image_path) for image_path in image_paths]
+
+        
+    sys_prompt = """
+    You are an engineering assistant specializing in water-related projects, focusing on numerical simulations and equipped to analyze images of 
+    2d simulation results. 
+    You will be asked to analyze images of water-related simulations and provide a brief, concise description of the results.
+    Describe features such as minima and maxima, trends, and patterns are of interest.
+    Expect to contrast the image with other images e.g. from other timesteps of the simulation or other simulations.
+
+    Exemplary descriptions:
+    * "Water levels range from 0 to 5 meters. A wave is located at x=100m and skewed to the right."
+    * "The wave propagation speeds are similar in both, but the wave dissipates faster in the second simulation."
+
+    (optional) additional context:
+    """
+
+    if added_context is not None:
+        sys_prompt += added_context
+
+    messages = [
+        {"role": "system", "content": sys_prompt},
+    ]
+
+    for base64_image in base64_images:
+        messages.append({
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {
+                    "url": f"data:image/png;base64,{base64_image}"}
+                }
+            ]
+        })
+
+    # Call AI
+    response = client.chat.completions.create(
+        model=DEPLOYMENT_NAME,
+        messages=messages,
+    )
+    response_message = response.choices[0].message
+    # Create a matplotlib figure to display the analyzed images
+    fig, axes = plt.subplots(1, len(image_filenames), figsize=(12, 4))
+    for i, filename in enumerate(image_filenames):
+        axes[i].imshow(plt.imread(filename))
+        axes[i].set_title(filename)
+        axes[i].axis('off')
+    
+
+    return response_message
 
 
 
@@ -759,11 +822,43 @@ function_descriptions.append(
             ]
         },
         "returns": {
-            "type": "string",
-            "description": "A string indicating the location and filename of the saved plot"
+            "type": "object",
+            "description": "A matplotlib.figure.Figure object representing the plot of the results with the specified number of time steps, saved to the 'figures' subfolder."
         }
     }
 )
+
+function_descriptions.append(
+    {
+        "name": "analyze_images",
+        "description": "Analyzes one or more images using GPT-4o and provides a brief, concise description of the results.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "image_filenames": {
+                    "type": "array",
+                    "description": "A list of image filenames to be analyzed.",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "added_context": {
+                    "type": "string",
+                    "description": "Additional context to provide to the LLM, e.g. parameters of simulations."
+                }
+            },
+            "required": [
+                "image_filenames"
+            ]
+        },
+        "returns": {
+            "type": "string",
+            "description": "The response message from GPT-4o containing the analysis of the provided images."
+        }
+    }
+)
+
+
 
 # --------------------------------------------------
 # define available functions. 
@@ -789,4 +884,8 @@ available_functions = {
 
     # simulation
     "simulate": simulate,
+
+    # evaluate
+    "analyze_images": analyze_images,
+
 }

@@ -1,0 +1,24 @@
+// Created    : 2024-06-21 05:57:29
+// Executable : /teamspace/studios/this_studio/MIKE/2024/bin/FemEngineHD
+// Version    : 22.0.3.15315
+
+
+======================= Computing Environment ========================
+  Local machine name              : ip-10-192-12-200
+  Number of subdomains            : 3
+  Local subdomain id              : 1
+  Specified threads per subdomain : 1
+======================================================================
+
+
+======================================================================
+Target: FemEngineHD
+
+    delete_logfile : 1 (default)
+    merge_data_default : 2 (default)
+
+
+  Section: SYSTEM ----------------------------------------------------
+
+
+  Section: DOMAIN ----------------------------------------------------

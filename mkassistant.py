@@ -56,13 +56,10 @@ with st.expander("ℹ️ MKAssistant"):
         * create plotting for mesh and bathymetry `plot_mesh_bathymetry` (check for availability of files first). E.g. "can you plot this?"
         * initial conditions `create_surface_elevation`
         * plot initial conditions `plot_mesh_bathy` (reusing the plotting function for mesh and bathymetry). E.g. "can we create an initial condition with the same nx,ny and a wave of 5 m height and 200 m width on the left?"
-        * UPGRADE: central config file providing API access and paths
-        * ADD: run simulation(s) from notebook `mike_workflow.ipynb`, `simulate(simfile_name)`
-        * ADD: create figures from results from notebook `mike_workflow.ipynb`, `func_helpers.plot_results(simulation, n_times=3)`
+        * ADD: create setup-file. Function that contains all m21fm contents with variables for mesh-file, initial condition file, (boundary conditions), manning parameters.
+        * run simulation(s) `simulate`. Requires `mikesimulation.py`. E.g. "can you run sim_.m21fm?"
+        * create figures from results from notebook `mike_workflow.ipynb`, `func_helpers.plot_results(simulation, n_times=3)`
         * ADD: evaluation of figures like in `mike_workflow.ipynb`,`evaluation_tools.analyze_images(image_files, added_context)`
-        * TODO: add a "remember_this" function to write to a log file or similar, could also be automatically triggered later
-        * TODO: awareness of the setup the user is working on (temp_setup.txt?). User should have the possibility to modify anything and only then save a new setup file to run. 
-        * TODO: chat widget? https://github.com/Mintplex-Labs/anything-llm/blob/master/embed/README.md
         """
     )
 with st.expander("ℹ️ Simulations overview"):
@@ -90,7 +87,9 @@ For this you have access to a set of functions that let you
 4. create initial conditions,
 5. create boundary conditions,
 6. write to new setup files (save_to_pfs), which you ONLY use when explicitly prompted by user
-7. run and evaluate simulations.
+7. run simulations.
+8. create figures from simulation results
+9. evaluate result figures and compare multiple results
 
 Anything else, e.g. modification of loaded parameters can be done in normal conversations. 
 In case a user needs guidance on building a numerical setup, you can walk him step-by-step through the setup process by either assuming or asking the user for 

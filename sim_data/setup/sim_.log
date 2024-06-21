@@ -1,0 +1,36 @@
+// Created    : 2024-06-21 05:57:29
+// Executable : /teamspace/studios/this_studio/MIKE/2024/bin/FemEngineHD
+// Version    : 22.0.3.15315
+
+
+======================= Computing Environment ========================
+  Local machine name              : ip-10-192-12-200
+  Number of subdomains            : 3
+  Local subdomain id              : 0
+  Specified threads per subdomain : 1
+======================================================================
+
+
+======================================================================
+Target: FemEngineHD
+
+    delete_logfile : 1 (default)
+    merge_data_default : 2 (default)
+
+
+  Section: SYSTEM ----------------------------------------------------
+
+
+  Section: TIME ------------------------------------------------------
+      start_time : 2023 12 1 5 5 0 
+      time_step_interval : 5
+      number_of_time_steps : 13
+
+
+  Section: DOMAIN ----------------------------------------------------
+      number_of_dimensions : 2
+      file_name : /teamspace/studios/this_studio/simple_mk-assistant/sim_data/domain/mesh_bathy_100x30_dx10_reference-20_slope0.7.dfs2
+      type_of_element : 25 (default)
+      type_of_grid : 1 (default)
+DFS open error on /teamspace/studios/this_studio/simple_mk-assistant/sim_data/domain/mesh_bathy_100x30_dx10_reference-20_slope0.7.dfs2
+Abnormal completion
