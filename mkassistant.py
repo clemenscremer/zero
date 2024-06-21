@@ -59,7 +59,7 @@ with st.expander("ℹ️ MKAssistant"):
         * ADD: create setup-file. Function that contains all m21fm contents with variables for mesh-file, initial condition file, (boundary conditions), manning parameters.
         * run simulation(s) `simulate`. Requires `mikesimulation.py`. E.g. "can you run sim_.m21fm?"
         * create figures from results from notebook `mike_workflow.ipynb`, `func_helpers.plot_results(simulation, n_times=3)`
-        * ADD: evaluation of figures like in `mike_workflow.ipynb`,`evaluation_tools.analyze_images(image_files, added_context)`
+        * evaluation of figures like in `mike_workflow.ipynb`,`evaluation_tools.analyze_images(image_files, added_context)`
         """
     )
 with st.expander("ℹ️ Simulations overview"):
