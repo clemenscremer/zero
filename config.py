@@ -13,6 +13,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SIM_DATA_DIR = os.path.join(BASE_DIR, "sim_data")
 
 # Define the subdirectories within the simulation data directory
+TEMP_DIR = os.path.join(SIM_DATA_DIR, "temp")
 DOMAIN_DIR = os.path.join(SIM_DATA_DIR, "domain")
 INITIAL_DIR = os.path.join(SIM_DATA_DIR, "initial")
 SETUP_DIR = os.path.join(SIM_DATA_DIR, "setup")
@@ -29,6 +30,7 @@ os.makedirs(SETUP_DIR, exist_ok=True)
 os.makedirs(BOUNDARIES_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(FIGURE_DIR, exist_ok=True)
+os.makedirs(TEMP_DIR, exist_ok=True)
 
 
 # GPT 4-o deployment

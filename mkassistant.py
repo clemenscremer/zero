@@ -56,10 +56,14 @@ with st.expander("ℹ️ MKAssistant"):
         * create plotting for mesh and bathymetry `plot_mesh_bathymetry` (check for availability of files first). E.g. "can you plot this?"
         * initial conditions `create_surface_elevation`
         * plot initial conditions `plot_mesh_bathy` (reusing the plotting function for mesh and bathymetry). E.g. "can we create an initial condition with the same nx,ny and a wave of 5 m height and 200 m width on the left?"
-        * ADD: create setup-file. Function that contains all m21fm contents with variables for mesh-file, initial condition file, (boundary conditions), manning parameters.
         * run simulation(s) `simulate`. Requires `mikesimulation.py`. E.g. "can you run sim_.m21fm?"
         * create figures from results from notebook `mike_workflow.ipynb`, `func_helpers.plot_results(simulation, n_times=3)`
-        * evaluation of figures like in `mike_workflow.ipynb`,`evaluation_tools.analyze_images(image_files, added_context)`
+        * evaluation of figures with analyze_images(image_files, added_context)`
+        * ADD: create folder temp housing a temporary setup file that the user can build on from an existing file that is being copied `select_base_setup` and for the assistant to work with and overwrite on each change in conversation
+            * choosing session state approach to keep track of the temporary setup parameters 
+        * ADD: reporting in markdown and latex for pdf export
+        * ADD: extract timeseries data from simulation results
+        * ADD: ML prediction from timeseries data
         """
     )
 with st.expander("ℹ️ Simulations overview"):
