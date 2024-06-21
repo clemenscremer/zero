@@ -2,7 +2,16 @@ import os
 import pandas as pd
 import mikeio
 # import paths from central config
-from config import BASE_DIR, SIM_DATA_DIR, DOMAIN_DIR, INITIAL_DIR, SETUP_DIR, BOUNDARIES_DIR, RESULTS_DIR, FIGURE_DIR
+from config import UPLOAD_SIM_DATA_DIR, ACTIVE_SIM_DATA_DIR, OUTPUT_SIM_DATA_DIR, TEMP_SIM_DATA_DIR
+from config import UPLOAD_DOMAIN_DIR, ACTIVE_DOMAIN_DIR, OUTPUT_DOMAIN_DIR, TEMP_DOMAIN_DIR
+from config import UPLOAD_INITIAL_DIR, ACTIVE_INITIAL_DIR, OUTPUT_INITIAL_DIR, TEMP_INITIAL_DIR
+from config import UPLOAD_SETUP_DIR, ACTIVE_SETUP_DIR, OUTPUT_SETUP_DIR, TEMP_SETUP_DIR
+from config import UPLOAD_BOUNDARIES_DIR, ACTIVE_BOUNDARIES_DIR, OUTPUT_BOUNDARIES_DIR, TEMP_BOUNDARIES_DIR
+from config import UPLOAD_RESULTS_DIR, ACTIVE_RESULTS_DIR, OUTPUT_RESULTS_DIR, TEMP_RESULTS_DIR
+from config import UPLOAD_FIGURE_DIR, ACTIVE_FIGURE_DIR, OUTPUT_FIGURE_DIR, TEMP_FIGURE_DIR
+from config import UPLOAD_EXCEL_FILE_PATH, ACTIVE_EXCEL_FILE_PATH, OUTPUT_EXCEL_FILE_PATH, TEMP_EXCEL_FILE_PATH
+
+import shutil
 
 
 # Define the base directory for the application
@@ -37,31 +46,31 @@ def list_model_files(return_folders=None):
 
     # List files in the 'setup' subfolder
     if return_folders is None or 'setup' in return_folders:
-        if os.path.exists(SETUP_DIR):
-            setup_files = [file for file in os.listdir(SETUP_DIR) if file.endswith('.m21fm')]
+        if os.path.exists(ACTIVE_SETUP_DIR):
+            setup_files = [file for file in os.listdir(ACTIVE_SETUP_DIR) if file.endswith('.m21fm')]
             file_lists['setup'] = setup_files
         else:
             file_lists['setup'] = []
 
     # List files in the 'boundaries' subfolder
     if return_folders is None or 'boundaries' in return_folders:
-        file_lists['boundaries'] = os.listdir(BOUNDARIES_DIR)
+        file_lists['boundaries'] = os.listdir(ACTIVE_BOUNDARIES_DIR)
 
     # List files in the 'initial' subfolder
     if return_folders is None or 'initial' in return_folders:
-        file_lists['initial'] = os.listdir(INITIAL_DIR)
+        file_lists['initial'] = os.listdir(ACTIVE_INITIAL_DIR)
 
     # List files in the 'domain' subfolder
     if return_folders is None or 'domain' in return_folders:
-        file_lists['domain'] = os.listdir(DOMAIN_DIR)
+        file_lists['domain'] = os.listdir(ACTIVE_DOMAIN_DIR)
 
     # List files in the 'results' subfolder
     if return_folders is None or 'result' in return_folders:
-        file_lists['result'] = os.listdir(RESULTS_DIR)
+        file_lists['result'] = os.listdir(ACTIVE_RESULTS_DIR)
 
     # List files in the 'figure' folder (contains results)
     if return_folders is None or 'figure' in return_folders:
-        file_lists['figure'] = os.listdir(FIGURE_DIR)
+        file_lists['figure'] = os.listdir(ACTIVE_FIGURE_DIR)
 
     return file_lists
 
@@ -87,7 +96,7 @@ def get_pfs_parameters(file_path, start_time=True, time_step_interval=True, numb
         dict: A dictionary containing the requested parameters.
     """
     from mikeio import read_pfs
-    pfs = read_pfs(os.path.join(SETUP_DIR, file_path))
+    pfs = read_pfs(os.path.join(ACTIVE_SETUP_DIR, file_path))
     parameters = {}
 
     if start_time:
@@ -126,7 +135,8 @@ def modify_pfs_parameters(file_path, modified_parameters):
     """
     from mikeio import read_pfs
 
-    pfs = read_pfs(os.path.join(SETUP_DIR, file_path))
+    original_pfs_path = os.path.join(ACTIVE_SETUP_DIR, file_path)
+    pfs = read_pfs(original_pfs_path)
 
     # Modify the specified parameters
     for parameter, value in modified_parameters.items():
@@ -162,21 +172,35 @@ def modify_pfs_parameters(file_path, modified_parameters):
     else:
         next_number = 1
 
-    modified_file_path = os.path.join(SETUP_DIR, f"{base_name}_{next_number:03d}.m21fm")
+    modified_file_path = os.path.join(TEMP_SETUP_DIR, f"{base_name}_{next_number:03d}.m21fm")
 
     # Write the modified PFS file
     pfs.write(modified_file_path)
 
     # Update the Excel file with the simulation details
-    excel_file_path = os.path.join(SIM_DATA_DIR, "simulations.xlsx")
+    original_excel_file_path = os.path.join(ACTIVE_SIM_DATA_DIR, "simulations.xlsx")
+    modified_excel_file_path = os.path.join(TEMP_SIM_DATA_DIR, "simulations.xlsx")
+
     new_row = get_pfs_parameters(modified_file_path)
     new_row["setupfile_name"] = os.path.basename(modified_file_path)  # Add the file name to the new row
-    if os.path.exists(excel_file_path):
-        df = pd.read_excel(excel_file_path)
+    if os.path.exists(original_excel_file_path):
+        df = pd.read_excel(original_excel_file_path)
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
     else:
         df = pd.DataFrame([new_row])
-    df.to_excel(excel_file_path, index=False)
+    df.to_excel(modified_excel_file_path, index=False)
+
+    #copy the modified file to the active setup dir
+    shutil.copy(modified_file_path, os.path.join(ACTIVE_SETUP_DIR, os.path.basename(modified_file_path)))
+    print("SYS INFO: Modified pfs file copied to active setup dir")
+    #copy the modified excel file to the active sim data dir
+    shutil.copy(modified_excel_file_path, os.path.join(ACTIVE_SIM_DATA_DIR, os.path.basename(modified_excel_file_path)))
+    print("SYS INFO: Modified excel file copied to active sim data dir")
+
+    # remove the old files
+    os.remove(original_pfs_path)
+    os.remove(original_excel_file_path)
+    print("SYS INFO: Removed previous pfs and excel files")
 
     return modified_file_path
 
@@ -219,10 +243,19 @@ def create_mesh_bathymetry(nx, ny, dx, dy, reference_depth, slope_degrees=0.0):
         items=[mikeio.ItemInfo("Bathymetry", EUMType.Bathymetry, EUMUnit.meter)],
     )
 
-    bathymetry_filename = os.path.join(DOMAIN_DIR, f"mesh_bathy_{nx}x{ny}_dx{dx}_reference{reference_depth}_slope{slope_degrees}.dfs2")
-    dataset.to_dfs(bathymetry_filename)
+    modified_bathymetry_filename = os.path.join(TEMP_DOMAIN_DIR, f"mesh_bathy_{nx}x{ny}_dx{dx}_reference{reference_depth}_slope{slope_degrees}.dfs2")
+    
+    dataset.to_dfs(modified_bathymetry_filename)
+    print(f"SYS INFO: Bathymetry dataset saved temorarily to: {modified_bathymetry_filename}")
 
-    return_str = f"Bathymetry dataset saved to: {bathymetry_filename}"
+    #copy the modified file to the active domain dir
+    shutil.copy(modified_bathymetry_filename, os.path.join(ACTIVE_DOMAIN_DIR, os.path.basename(modified_bathymetry_filename)))
+    print("SYS INFO: Modified bathymetry file copied to active domain dir")
+    # remove the old files
+    os.remove(modified_bathymetry_filename)
+    print("SYS INFO: Removed previous bathymetry file")
+
+    return_str = f"Bathymetry dataset saved to: {os.path.join(ACTIVE_DOMAIN_DIR, os.path.basename(modified_bathymetry_filename))}"
     return return_str
 
 
@@ -239,9 +272,9 @@ def plot_mesh_bathy(filename, plot_type='mesh_bathy'):
     """
     import matplotlib.pyplot as plt
     if plot_type == 'mesh_bathy':
-        file_path = os.path.join(DOMAIN_DIR, filename)
+        file_path = os.path.join(ACTIVE_DOMAIN_DIR, filename)
     elif plot_type == 'initial':
-        file_path = os.path.join(INITIAL_DIR, filename)
+        file_path = os.path.join(ACTIVE_INITIAL_DIR, filename)
     else:
         raise ValueError("Invalid plot_type. Must be 'mesh_bathy' or 'initial'.")
 
@@ -305,7 +338,7 @@ def create_surface_elevation(nx, ny, dx, dy, wave_height=0.0, wave_width=0.0, wa
         items=[mikeio.ItemInfo("Surface elevation", EUMType.Surface_Elevation, EUMUnit.meter)],
     )
     
-    surface_elevation_filename = os.path.join(INITIAL_DIR, 
+    surface_elevation_filename = os.path.join(ACTIVE_INITIAL_DIR, 
     f"surface_elevation_{nx}x{ny}_dx{dx}wave{wave_height}x{wave_width}{wave_position}.dfs2") 
     dataset.to_dfs(surface_elevation_filename) 
     return_str = f"Initial surface elevation dataset saved to: {surface_elevation_filename}"
@@ -316,18 +349,17 @@ def create_surface_elevation(nx, ny, dx, dy, wave_height=0.0, wave_width=0.0, wa
 def simulate(simfile_name):
     """Simulate MIKE Model using the specified simfile."""
     import mikesimulation
-    sim_path = os.path.join(SETUP_DIR, simfile_name)
+    sim_path = os.path.join(ACTIVE_SETUP_DIR, simfile_name)
     mikesimulation.execute_simulation(sim_path, verbose=True)
 
     try:
         # copy simulation results from SETUP_DIR subfolder simfile_name, " - Result Files" to RESULTS_DIR whilst renaming to simfile_name.dfsu
         #/teamspace/studios/this_studio/mk-assistant/sim_data/setup/sim_.m21fm/ - Result Files/area.dfsu'
-        import shutil
-        results_in_path = os.path.join(SETUP_DIR, f"{simfile_name} - Result Files", "area.dfsu")
-        results_out_path = os.path.join(RESULTS_DIR, simfile_name.replace(".m21fm", ".dfsu"))
+        results_in_path = os.path.join(ACTIVE_SETUP_DIR, f"{simfile_name} - Result Files", "area.dfsu")
+        results_out_path = os.path.join(TEMP_RESULTS_DIR, simfile_name.replace(".m21fm", ".dfsu"))
         shutil.copy(results_in_path, results_out_path)
         # remove old results folder
-        shutil.rmtree(os.path.join(SETUP_DIR, f"{simfile_name} - Result Files"))
+        shutil.rmtree(os.path.join(TEMP_SETUP_DIR, f"{simfile_name} - Result Files"))
         return f"Simulation ran successfully, results copied to {results_out_path}"
 
     except Exception as e:

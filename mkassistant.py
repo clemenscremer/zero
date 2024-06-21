@@ -10,7 +10,15 @@ import pandas as pd
 import os
 
 # import paths from central config
-from config import SIM_DATA_DIR, EXCEL_FILE_PATH
+from config import UPLOAD_SIM_DATA_DIR, ACTIVE_SIM_DATA_DIR, OUTPUT_SIM_DATA_DIR
+from config import UPLOAD_DOMAIN_DIR, ACTIVE_DOMAIN_DIR, OUTPUT_DOMAIN_DIR
+from config import UPLOAD_INITIAL_DIR, ACTIVE_INITIAL_DIR, OUTPUT_INITIAL_DIR
+from config import UPLOAD_SETUP_DIR, ACTIVE_SETUP_DIR, OUTPUT_SETUP_DIR
+from config import UPLOAD_BOUNDARIES_DIR, ACTIVE_BOUNDARIES_DIR, OUTPUT_BOUNDARIES_DIR
+from config import UPLOAD_RESULTS_DIR, ACTIVE_RESULTS_DIR, OUTPUT_RESULTS_DIR
+from config import UPLOAD_FIGURE_DIR, ACTIVE_FIGURE_DIR, OUTPUT_FIGURE_DIR
+from config import UPLOAD_EXCEL_FILE_PATH, ACTIVE_EXCEL_FILE_PATH, OUTPUT_EXCEL_FILE_PATH
+
 # import api client from central config
 from config import client, DEPLOYMENT_NAME
 
@@ -22,7 +30,7 @@ def refresh_simulation_overview():
     Refresh the simulation overview table in the Streamlit app.
     """
     try:
-        sim_xl = pd.read_excel(EXCEL_FILE_PATH)
+        sim_xl = pd.read_excel(ACTIVE_EXCEL_FILE_PATH)
         st.session_state.simulation_overview = sim_xl
     except FileNotFoundError:
         st.session_state.simulation_overview = pd.DataFrame()

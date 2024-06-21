@@ -3,4 +3,5 @@
 # Ignore data heavy subfolders
 /sim_data/
 # adding pyc
+__pycache__/
 *.pyc
