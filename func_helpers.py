@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import mikeio
+import matplotlib.pyplot as plt
 import base64
 # import paths from central config
 from config import BASE_DIR, SIM_DATA_DIR, DOMAIN_DIR, INITIAL_DIR, SETUP_DIR, BOUNDARIES_DIR, RESULTS_DIR, FIGURE_DIR
@@ -418,13 +419,20 @@ def analyze_images(image_filenames, added_context):
     response_message = response.choices[0].message
     # Create a matplotlib figure to display the analyzed images
     fig, axes = plt.subplots(1, len(image_filenames), figsize=(12, 4))
+    # Ensure axes is an array-like object, even if there's only one image
+    if not hasattr(axes, '__iter__'):
+        axes = [axes]
+
     for i, filename in enumerate(image_filenames):
-        axes[i].imshow(plt.imread(filename))
+        axes[i].imshow(plt.imread(os.path.join(FIGURE_DIR, filename)))
         axes[i].set_title(filename)
         axes[i].axis('off')
-    
-
-    return response_message
+    plt.tight_layout()
+    fig.savefig("test_analysis.png")
+    return {
+        "response_message": response_message,
+        "figure": fig
+    }
 
 
 
@@ -831,7 +839,7 @@ function_descriptions.append(
 function_descriptions.append(
     {
         "name": "analyze_images",
-        "description": "Analyzes one or more images using GPT-4o and provides a brief, concise description of the results.",
+        "description": "Analyzes one or more images using GPT-4o and provides a brief, concise description of the results, as well as a matplotlib figure showing the analyzed images side-by-side.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -852,8 +860,18 @@ function_descriptions.append(
             ]
         },
         "returns": {
-            "type": "string",
-            "description": "The response message from GPT-4o containing the analysis of the provided images."
+            "type": "object",
+            "description": "An object containing the response message from GPT-4o and a matplotlib figure object displaying the analyzed images side-by-side.",
+            "properties": {
+                "response_message": {
+                    "type": "string",
+                    "description": "The response message from GPT-4o containing the analysis of the provided images."
+                },
+                "figure": {
+                    "type": "object",
+                    "description": "A matplotlib figure object displaying the analyzed images side-by-side."
+                }
+            }
         }
     }
 )
