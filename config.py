@@ -5,31 +5,69 @@ from openai import AzureOpenAI
 # Load environment variables from .env file
 load_dotenv()
 
-# Define global file paths
-# Define the base directory for the application
+########## DIRECTORY CONFIG ##########
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Define the simulation data directory relative to the application
-SIM_DATA_DIR = os.path.join(BASE_DIR, "sim_data")
+# UPLOAD DIRS 
+UPLOAD_SIM_DATA_DIR = os.path.join(BASE_DIR, "uploaded_sim_data")
 
-# Define the subdirectories within the simulation data directory
-DOMAIN_DIR = os.path.join(SIM_DATA_DIR, "domain")
-INITIAL_DIR = os.path.join(SIM_DATA_DIR, "initial")
-SETUP_DIR = os.path.join(SIM_DATA_DIR, "setup")
-BOUNDARIES_DIR = os.path.join(SIM_DATA_DIR, "boundaries")
-RESULTS_DIR = os.path.join(SIM_DATA_DIR, "results")
-FIGURE_DIR = os.path.join(SIM_DATA_DIR, "figures")
-EXCEL_FILE_PATH = os.path.join(SIM_DATA_DIR, "simulations.xlsx")
+UPLOAD_DOMAIN_DIR = os.path.join(UPLOAD_SIM_DATA_DIR, "domain")
+UPLOAD_INITIAL_DIR = os.path.join(UPLOAD_SIM_DATA_DIR, "initial")
+UPLOAD_SETUP_DIR = os.path.join(UPLOAD_SIM_DATA_DIR, "setup")
+UPLOAD_BOUNDARIES_DIR = os.path.join(UPLOAD_SIM_DATA_DIR, "boundaries")
+UPLOAD_RESULTS_DIR = os.path.join(UPLOAD_SIM_DATA_DIR, "results")
+UPLOAD_FIGURE_DIR = os.path.join(UPLOAD_SIM_DATA_DIR, "figures")
+UPLOAD_EXCEL_FILE_PATH = os.path.join(UPLOAD_SIM_DATA_DIR, "simulations.xlsx")
 
+os.makedirs(UPLOAD_SIM_DATA_DIR, exist_ok=True)
+os.makedirs(UPLOAD_DOMAIN_DIR, exist_ok=True)
+os.makedirs(UPLOAD_DOMAIN_DIR, exist_ok=True)
+os.makedirs(UPLOAD_INITIAL_DIR, exist_ok=True)
+os.makedirs(UPLOAD_SETUP_DIR, exist_ok=True)
+os.makedirs(UPLOAD_BOUNDARIES_DIR, exist_ok=True)
+os.makedirs(UPLOAD_RESULTS_DIR, exist_ok=True)
+os.makedirs(UPLOAD_FIGURE_DIR, exist_ok=True)
 
-# Create directories if they don't exist
-os.makedirs(DOMAIN_DIR, exist_ok=True)
-os.makedirs(INITIAL_DIR, exist_ok=True)
-os.makedirs(SETUP_DIR, exist_ok=True)
-os.makedirs(BOUNDARIES_DIR, exist_ok=True)
-os.makedirs(RESULTS_DIR, exist_ok=True)
-os.makedirs(FIGURE_DIR, exist_ok=True)
+# ACTIVE DIRS
+ACTIVE_SIM_DATA_DIR = os.path.join(BASE_DIR, "active_sim_data")
 
+ACTIVE_DOMAIN_DIR = os.path.join(ACTIVE_SIM_DATA_DIR, "domain")
+ACTIVE_INITIAL_DIR = os.path.join(ACTIVE_SIM_DATA_DIR, "initial")
+ACTIVE_SETUP_DIR = os.path.join(ACTIVE_SIM_DATA_DIR, "setup")
+ACTIVE_BOUNDARIES_DIR = os.path.join(ACTIVE_SIM_DATA_DIR, "boundaries")
+ACTIVE_RESULTS_DIR = os.path.join(ACTIVE_SIM_DATA_DIR, "results")
+ACTIVE_FIGURE_DIR = os.path.join(ACTIVE_SIM_DATA_DIR, "figures")
+ACTIVE_EXCEL_FILE_PATH = os.path.join(ACTIVE_SIM_DATA_DIR, "simulations.xlsx")
+
+os.makedirs(ACTIVE_SIM_DATA_DIR, exist_ok=True)
+os.makedirs(ACTIVE_DOMAIN_DIR, exist_ok=True)
+os.makedirs(ACTIVE_INITIAL_DIR, exist_ok=True)
+os.makedirs(ACTIVE_SETUP_DIR, exist_ok=True)
+os.makedirs(ACTIVE_BOUNDARIES_DIR, exist_ok=True)
+os.makedirs(ACTIVE_RESULTS_DIR, exist_ok=True)
+os.makedirs(ACTIVE_FIGURE_DIR, exist_ok=True)
+
+# OUTPUT DIRS
+OUTPUT_SIM_DATA_DIR = os.path.join(BASE_DIR, "output_sim_data")
+
+OUTPUT_DOMAIN_DIR = os.path.join(OUTPUT_SIM_DATA_DIR, "domain")
+OUTPUT_INITIAL_DIR = os.path.join(OUTPUT_SIM_DATA_DIR, "initial")
+OUTPUT_SETUP_DIR = os.path.join(OUTPUT_SIM_DATA_DIR, "setup")
+OUTPUT_BOUNDARIES_DIR = os.path.join(OUTPUT_SIM_DATA_DIR, "boundaries")
+OUTPUT_RESULTS_DIR = os.path.join(OUTPUT_SIM_DATA_DIR, "results")
+OUTPUT_FIGURE_DIR = os.path.join(OUTPUT_SIM_DATA_DIR, "figures")
+OUTPUT_EXCEL_FILE_PATH = os.path.join(OUTPUT_SIM_DATA_DIR, "simulations.xlsx")
+
+os.makedirs(OUTPUT_SIM_DATA_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DOMAIN_DIR, exist_ok=True)
+os.makedirs(OUTPUT_INITIAL_DIR, exist_ok=True)
+os.makedirs(OUTPUT_SETUP_DIR, exist_ok=True)
+os.makedirs(OUTPUT_BOUNDARIES_DIR, exist_ok=True)
+os.makedirs(OUTPUT_RESULTS_DIR, exist_ok=True)
+os.makedirs(OUTPUT_FIGURE_DIR, exist_ok=True)
+
+########## LLM MODEL CONFIG ##########
 
 # GPT 4-o deployment
 # Initialize the Azure OpenAI client
