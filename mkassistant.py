@@ -9,8 +9,9 @@ import matplotlib
 import pandas as pd
 import os
 
+import datetime
 # import paths from central config
-from config import SIM_DATA_DIR, EXCEL_FILE_PATH
+from config import SIM_DATA_DIR, TEMP_DIR, EXCEL_FILE_PATH
 # import api client from central config
 from config import client, DEPLOYMENT_NAME
 
@@ -26,7 +27,31 @@ def refresh_simulation_overview():
         st.session_state.simulation_overview = sim_xl
     except FileNotFoundError:
         st.session_state.simulation_overview = pd.DataFrame()
-    
+
+def save_message_history():
+    """Save the current message history to a JSON file."""
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"message_history_{timestamp}.json"
+    filepath = os.path.join(TEMP_DIR, filename)
+
+    with open(filepath, 'w') as f:
+        json.dump(st.session_state.messages, f, indent=2)
+
+    return filepath
+
+def load_message_history(filepath):
+    """Load a message history from a JSON file."""
+    with open(filepath, 'r') as f:
+        loaded_messages = json.load(f)
+
+    st.session_state.messages = loaded_messages
+
+def get_message_history_files():
+    """Get a list of message history files from TEMP_DIR, sorted by recency."""
+    files = [f for f in os.listdir(TEMP_DIR) if f.startswith("message_history_") and f.endswith(".json")]
+    full_paths = [os.path.join(TEMP_DIR, f) for f in files]
+    sorted_files = sorted(full_paths, key=os.path.getmtime, reverse=True)
+    return [os.path.basename(f) for f in sorted_files]
 # -------------------------------------------
 # streamlit page 
 # -------------------------------------------
@@ -49,8 +74,7 @@ with st.expander("ℹ️ MKAssistant"):
         Implemented functionality
         * simulation file awareness `list_model_files`. E.g. *"please provide an overview of available setup files"*
         * read parameters from pfs file `get_pfs_parameters` (currently limited to few). E.g. *"what are the parameters of the setup file?"*
-        * modify parameters, write to pfs file and keep track of available simulations in excel `modify_pfs_parameters`. 
-        E.g. *"please change the roughness to 12"*
+        * modify parameters `modify_parameters`. E.g. *"please change the roughness to 12"*
         * create mesh and bathymetry `create_mesh_bathymetry`. E.g. "let's create a new mesh and bathymetry. I would like a reference depth of -20 m, 100 elements in x and 30 in y-direction with 10 m grid cell size in both directions"
         * create plotting for mesh and bathymetry `plot_mesh_bathymetry` (check for availability of files first). E.g. "can you plot this?"
         * initial conditions `create_surface_elevation`
@@ -58,9 +82,7 @@ with st.expander("ℹ️ MKAssistant"):
         * run simulation(s) `simulate`. Requires `mikesimulation.py`. E.g. "can you run sim_.m21fm?"
         * create figures from results from notebook `mike_workflow.ipynb`, `func_helpers.plot_results(simulation, n_times=3)`
         * evaluation of figures with analyze_images(image_files, added_context)`
-        * ADD: session state following parameters.
-            * if nothing changes it shouldn't be updated 
-            * parameters are not updated yet
+        * saving message history and loading them from disk
         * ADD: reporting in markdown and latex for pdf export
         * ADD: extract timeseries data from simulation results
         * ADD: ML prediction from timeseries data
@@ -229,14 +251,28 @@ else:
 
 
 with st.sidebar:
-    # add button to clear chat history
+    if st.button("Save chat history"):
+        saved_file = save_message_history()
+        st.success(f"Chat history saved to {saved_file}")
+
+    st.write("Load chat history:")
+    history_files = get_message_history_files()
+    if history_files:
+        selected_file = st.selectbox("Select a file to load", history_files)
+        if st.button("Load selected history"):
+            load_message_history(os.path.join(TEMP_DIR, selected_file))
+            st.success(f"Chat history loaded from {selected_file}")
+            st.experimental_rerun()
+    else:
+        st.write("No saved chat histories found.")
+
     if st.button("Clear chat history"):
         st.session_state.messages = system_message
         st.session_state.messages.append(
-            {"role": "assistant", "content": "How can i assist?"} # initial message
-            )
-    
-    st.title("Full message history")
-    st.write(len(st.session_state.messages))
-    st.write(st.session_state.messages)
-    
+            {"role": "assistant", "content": "How can I assist?"} # initial message
+        )
+        st.experimental_rerun()
+    with st.expander("Full message history"):
+        st.write(len(st.session_state.messages))
+        st.write(st.session_state.messages)
+        
