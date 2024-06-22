@@ -53,8 +53,7 @@ def list_model_files(return_folders=None):
 
 
 def get_pfs_parameters(file_path, start_time=True, time_step_interval=True, number_of_time_steps=True,
-                       domain_file=True, initial_conditions_file=True, initial_surface_elevation=True,
-                       boundary_conditions_file=True, manning_number=True):
+                       domain_file=True, initial_conditions_file=True, manning_number=True):
     """
     Retrieves specific parameters from a PFS numerical setup file.
 
@@ -65,8 +64,6 @@ def get_pfs_parameters(file_path, start_time=True, time_step_interval=True, numb
         number_of_time_steps (bool): Whether to retrieve the number of time steps. Default is True.
         domain_file (bool): Whether to retrieve the domain file name. Default is True.
         initial_conditions_file (bool): Whether to retrieve the initial conditions file name. Default is True.
-        initial_surface_elevation (bool): Whether to retrieve the initial surface elevation. Default is True.
-        boundary_conditions_file (bool): Whether to retrieve the boundary conditions file name. Default is True.
         manning_number (bool): Whether to retrieve the Manning number. Default is True.
 
     Returns:
@@ -87,14 +84,26 @@ def get_pfs_parameters(file_path, start_time=True, time_step_interval=True, numb
         parameters["domain_file"] = pfs["FemEngineHD"]["DOMAIN"]["file_name"]
     if initial_conditions_file:
         parameters["initial_conditions_file"] = pfs["FemEngineHD"]["HYDRODYNAMIC_MODULE"]["INITIAL_CONDITIONS"]["file_name_2D"]
-    if initial_surface_elevation:
-        parameters["initial_surface_elevation"] = pfs["FemEngineHD"]["HYDRODYNAMIC_MODULE"]["INITIAL_CONDITIONS"]["surface_elevation_constant"]
-    if boundary_conditions_file:
-        parameters["boundary_conditions_file"] = pfs["FemEngineHD"]["HYDRODYNAMIC_MODULE"]["BOUNDARY_CONDITIONS"]["CODE_2"]["file_name"]
     if manning_number:
         parameters["manning_number"] = pfs["FemEngineHD"]["HYDRODYNAMIC_MODULE"]["BED_RESISTANCE"]["MANNING_NUMBER"]["constant_value"]
 
     return parameters
+
+
+def modify_parameters(modified_parameters):
+    """
+    Modifies specific parameters in a PFS file, writes the modified file with a numbered suffix,
+    and updates an Excel file with the simulation details.
+
+    Args:
+        modified_parameters (dict): Dictionary of parameters to modify, where the keys are the parameter names
+                                  and the values are the new values.
+
+    Returns:
+        dict: Dictionary of parameters to modify, where the keys are the parameter names
+                                  and the values are the new values.
+    """
+    return modified_parameters
 
 
 def modify_pfs_parameters(file_path, modified_parameters):
@@ -298,6 +307,58 @@ def create_surface_elevation(nx, ny, dx, dy, wave_height=0.0, wave_width=0.0, wa
 
     return return_str
 
+def save_setup(file_path, modified_parameters):
+    """
+    Modifies a PFS file with the given parameters and saves it with a numbered suffix.
+
+    Args:
+        file_path (str): Path to the original PFS file, relative to the 'setup' directory.
+        modified_parameters (dict): Dictionary of parameters to modify, where the keys are the parameter names
+                                    and the values are the new values.
+
+    Returns:
+        str: Path to the newly saved PFS file.
+    """
+    from mikeio import read_pfs
+
+    # Read the original PFS file
+    pfs = read_pfs(os.path.join(SETUP_DIR, file_path))
+
+    # Modify the specified parameters
+    for parameter, value in modified_parameters.items():
+        if parameter == "start_time":
+            pfs["FemEngineHD"]["TIME"]["start_time"] = value
+        elif parameter == "time_step_interval":
+            pfs["FemEngineHD"]["TIME"]["time_step_interval"] = value
+        elif parameter == "number_of_time_steps":
+            pfs["FemEngineHD"]["TIME"]["number_of_time_steps"] = value
+        elif parameter == "domain_file":
+            pfs["FemEngineHD"]["DOMAIN"]["file_name"] = value
+        elif parameter == "initial_conditions_file":
+            pfs["FemEngineHD"]["HYDRODYNAMIC_MODULE"]["INITIAL_CONDITIONS"]["file_name_2D"] = value
+        elif parameter == "manning_number":
+            pfs["FemEngineHD"]["HYDRODYNAMIC_MODULE"]["BED_RESISTANCE"]["MANNING_NUMBER"]["constant_value"] = value
+        else:
+            raise ValueError(f"Parameter '{parameter}' is not a valid parameter in the PFS file.")
+
+    # Get the list of existing setup files
+    file_lists = list_model_files(return_folders=['setup'])
+    setup_files = file_lists['setup']
+
+    # Generate the modified file name with a numbered suffix
+    base_name = os.path.splitext(os.path.basename(file_path))[0]
+    existing_numbers = [int(f.replace(base_name + "_", "").replace(".m21fm", "")) for f in setup_files if f.startswith(base_name + "_")]
+    if existing_numbers:
+        next_number = max(existing_numbers) + 1
+    else:
+        next_number = 1
+
+    modified_file_path = os.path.join(SETUP_DIR, f"{base_name}_{next_number:03d}.m21fm")
+
+    # Write the modified PFS file
+    pfs.write(modified_file_path)
+
+    return modified_file_path
 
 def simulate(simfile_name):
     """Simulate MIKE Model using the specified simfile."""
@@ -524,14 +585,6 @@ function_descriptions.append(
                     "type": "boolean",
                     "description": "Whether to retrieve the initial conditions file name. Default is True."
                 },
-                "initial_surface_elevation": {
-                    "type": "boolean",
-                    "description": "Whether to retrieve the initial surface elevation. Default is True."
-                },
-                "boundary_conditions_file": {
-                    "type": "boolean",
-                    "description": "Whether to retrieve the boundary conditions file name. Default is True."
-                },
                 "manning_number": {
                     "type": "boolean",
                     "description": "Whether to retrieve the Manning number. Default is True."
@@ -565,14 +618,6 @@ function_descriptions.append(
                     "type": "string",
                     "description": "The file name of the initial conditions file."
                 },
-                "initial_surface_elevation": {
-                    "type": "number",
-                    "description": "The constant surface elevation in meters."
-                },
-                "boundary_conditions_file": {
-                    "type": "string",
-                    "description": "The file name of the boundary conditions file."
-                },
                 "manning_number": {
                     "type": "number",
                     "description": "The constant Manning number."
@@ -585,18 +630,14 @@ function_descriptions.append(
 
 function_descriptions.append(
     {
-        "name": "modify_pfs_parameters",
-        "description": "Modifies specific parameters in a PFS file, writes the modified file with a numbered suffix, and updates an Excel file with the simulation details.",
+        "name": "modify_parameters",
+        "description": "Prepares a dictionary of parameters to modify in a PFS file based on user input.",
         "parameters": {
             "type": "object",
             "properties": {
-                "file_path": {
-                    "type": "string",
-                    "description": "Path to the PFS file, relative to the 'setup' directory."
-                },
                 "modified_parameters": {
                     "type": "object",
-                    "description": "Dictionary of parameters to modify, where the keys are the parameter names and the values are the new values. The function will automatically determine the correct location to modify the parameters based on the PFS file structure.",
+                    "description": "Dictionary of parameters to modify, where the keys are the parameter names and the values are the new values.",
                     "properties": {
                         "start_time": {
                             "type": "string",
@@ -618,14 +659,6 @@ function_descriptions.append(
                             "type": "string",
                             "description": "The new file name of the initial conditions file."
                         },
-                        "initial_surface_elevation": {
-                            "type": "number",
-                            "description": "The new constant surface elevation in meters."
-                        },
-                        "boundary_conditions_file": {
-                            "type": "string",
-                            "description": "The new file name of the boundary conditions file."
-                        },
                         "manning_number": {
                             "type": "number",
                             "description": "The new constant Manning number."
@@ -634,16 +667,17 @@ function_descriptions.append(
                 }
             },
             "required": [
-                "file_path",
                 "modified_parameters"
             ]
         },
         "returns": {
-            "type": "string",
-            "description": "The path to the modified PFS file."
+            "type": "object",
+            "description": "The dictionary of parameters to modify."
         }
     })
 
+
+    
 function_descriptions.append(
     {
         "name": "create_mesh_bathymetry",
@@ -786,6 +820,66 @@ function_descriptions.append(
 
 function_descriptions.append(
     {
+        "name": "save_setup",
+        "description": "Modifies a PFS file with the given parameters and saves it with a numbered suffix.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Path to the original PFS file, relative to the 'setup' directory."
+                },
+                "modified_parameters": {
+                    "type": "object",
+                    "description": "Dictionary of parameters to modify, where the keys are the parameter names and the values are the new values.",
+                    "properties": {
+                        "start_time": {
+                            "type": "string",
+                            "description": "The new start time of the simulation."
+                        },
+                        "time_step_interval": {
+                            "type": "number",
+                            "description": "The new time step interval in seconds."
+                        },
+                        "number_of_time_steps": {
+                            "type": "integer",
+                            "description": "The new number of time steps in the simulation."
+                        },
+                        "domain_file": {
+                            "type": "string",
+                            "description": "The new file name of the domain file (mesh and bathymetry)."
+                        },
+                        "initial_conditions_file": {
+                            "type": "string",
+                            "description": "The new file name of the initial conditions file."
+                        },
+                        "initial_surface_elevation": {
+                            "type": "number",
+                            "description": "The new constant surface elevation in meters."
+                        },
+                        "boundary_conditions_file": {
+                            "type": "string",
+                            "description": "The new file name of the boundary conditions file."
+                        },
+                        "manning_number": {
+                            "type": "number",
+                            "description": "The new constant Manning number."
+                        }
+                    }
+                }
+            },
+            "required": [
+                "file_path",
+                "modified_parameters"
+            ]
+        },
+        "returns": {
+            "type": "string",
+            "description": "The path to the newly saved PFS file."
+        }
+    })
+function_descriptions.append(
+    {
         "name": "simulate",
         "description": "Simulate MIKE Model using the specified simfile. E.g. if the user asks to execute simulation or run simulation",
         "parameters": {
@@ -852,7 +946,7 @@ function_descriptions.append(
                 },
                 "added_context": {
                     "type": "string",
-                    "description": "Additional context to provide to the LLM, e.g. parameters of simulations."
+                    "description": "Additional context to provide to the LLM for analysis, e.g. parameters of simulations which can partly be derived from filenames if not known from convarsation."
                 }
             },
             "required": [
@@ -889,7 +983,8 @@ available_functions = {
     # setup
     "get_pfs_parameters": get_pfs_parameters,
 
-    "modify_pfs_parameters": modify_pfs_parameters,
+    "modify_parameters": modify_parameters,
+
 
     "create_mesh_bathymetry": create_mesh_bathymetry,
 
@@ -899,6 +994,8 @@ available_functions = {
     "plot_mesh_bathy": plot_mesh_bathy,
 
     "plot_results": plot_results,
+
+    "save_setup": save_setup,
 
     # simulation
     "simulate": simulate,

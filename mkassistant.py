@@ -27,7 +27,6 @@ def refresh_simulation_overview():
     except FileNotFoundError:
         st.session_state.simulation_overview = pd.DataFrame()
     
-    
 # -------------------------------------------
 # streamlit page 
 # -------------------------------------------
@@ -59,13 +58,21 @@ with st.expander("ℹ️ MKAssistant"):
         * run simulation(s) `simulate`. Requires `mikesimulation.py`. E.g. "can you run sim_.m21fm?"
         * create figures from results from notebook `mike_workflow.ipynb`, `func_helpers.plot_results(simulation, n_times=3)`
         * evaluation of figures with analyze_images(image_files, added_context)`
-        * ADD: create folder temp housing a temporary setup file that the user can build on from an existing file that is being copied `select_base_setup` and for the assistant to work with and overwrite on each change in conversation
-            * choosing session state approach to keep track of the temporary setup parameters 
+        * ADD: session state following parameters.
+            * if nothing changes it shouldn't be updated 
+            * parameters are not updated yet
         * ADD: reporting in markdown and latex for pdf export
         * ADD: extract timeseries data from simulation results
         * ADD: ML prediction from timeseries data
         """
     )
+
+with st.expander("📂 Parameters"):
+    try:
+        st.write(st.session_state.params)
+    except:
+        st.write("No parameters available")
+
 with st.expander("ℹ️ Simulations overview"):
     if "simulation_overview" in st.session_state:
         st.write(st.session_state.simulation_overview)
@@ -89,8 +96,8 @@ For this you have access to a set of functions that let you
 2. open setup files and return parameters, 
 3. create mesh and bathymetry, 
 4. create initial conditions,
-5. create boundary conditions,
-6. write to new setup files (save_to_pfs), which you ONLY use when explicitly prompted by user
+5. modify parameters 
+6. write to new setup files, which you ONLY use when explicitly prompted by user
 7. run simulations.
 8. create figures from simulation results
 9. evaluate result figures and compare multiple results
@@ -175,6 +182,20 @@ if st.session_state.messages[-1]["role"] != "assistant":
                 if type(function_response) == 'matplotlib.figure.Figure':
                     st.pyplot(function_response)
                     add_to_message_history(response_message.role, "Plotting the result")
+                # catch modification of parameters
+                elif function_name == "get_pfs_parameters":
+                    st.write(function_response) # REMOVE LATER
+                    add_to_message_history(response_message.role, function_response)
+                    st.session_state.params = function_response
+                elif function_name == "modify_parameters":
+                    st.write(function_response) # REMOVE LATER
+                    add_to_message_history(response_message.role, function_response)
+                    # Update only the parameters provided in the function response
+                    if isinstance(function_response, dict):
+                        for key, value in function_response.items():
+                            st.session_state.params[key] = value
+                    else:
+                        st.error("Unexpected response format from modify_parameters function")
                 # handing dict return from analysis containing figure and text
                 elif function_name == "analyze_images":
                     response_message = function_response["response_message"]
