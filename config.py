@@ -8,6 +8,9 @@ load_dotenv()
 # Define global file paths
 # Define the base directory for the application
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+IMG_DIR = os.path.join(BASE_DIR, "img")
+
+
 
 # Define the simulation data directory relative to the application
 SIM_DATA_DIR = os.path.join(BASE_DIR, "sim_data")

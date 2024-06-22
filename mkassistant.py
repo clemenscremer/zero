@@ -15,6 +15,12 @@ from config import SIM_DATA_DIR, TEMP_DIR, EXCEL_FILE_PATH
 # import api client from central config
 from config import client, DEPLOYMENT_NAME
 
+from PIL import Image
+# Load custom avatar
+assistant_avatar = Image.open("simple_mk-assistant/img/dalle_bot.webp")
+usr_avatar = Image.open("simple_mk-assistant/img/dalle_engineer.webp")
+
+
 # -------------------------------------------
 # frontend helper functions
 # -------------------------------------------
@@ -62,6 +68,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
     menu_items=None,
 )
+# Load and display the header image
+st.image("simple_mk-assistant/img/zero.png")
+
 with st.expander("ℹ️ MKAssistant"):
     st.write(
         """
@@ -144,10 +153,10 @@ if "messages" not in st.session_state.keys():
 # Display the prior chat messages if the role is not function #
 for message in st.session_state.messages:  
     if message["role"] == "user":
-        with st.chat_message("user"):#, avatar=user_avatar):
+        with st.chat_message("user", avatar=usr_avatar):
             st.write(message["content"])        
     elif message["role"] == "assistant" and message["content"] != None:
-        with st.chat_message("assistant"):#, avatar=bot_avatar):
+        with st.chat_message("assistant", avatar=assistant_avatar):
             st.write(message["content"])
     # else, if message role is function or content is none then pass
     else:
@@ -158,12 +167,12 @@ if prompt := st.chat_input(
     "Your question"
 ):  # Prompt for user input and save to chat history
     add_to_message_history("user", prompt)
-    with st.chat_message("user"):#, avatar=user_avatar):
+    with st.chat_message("user", avatar=usr_avatar):
         st.write(prompt)
 
 # If last message is not from assistant, generate a new response
 if st.session_state.messages[-1]["role"] != "assistant":
-    with st.chat_message("assistant"):#, avatar=bot_avatar):
+    with st.chat_message("assistant", avatar=assistant_avatar):
         with st.spinner("Thinking..."):
             response = client.chat.completions.create(
                 model=DEPLOYMENT_NAME,

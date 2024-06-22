@@ -3,7 +3,6 @@
 # Ignore files
 *.dfs2
 *.dfsu
-*.png
 *.xlsx
 *.log
 *.json
