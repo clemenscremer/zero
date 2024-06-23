@@ -14,8 +14,11 @@ from config import client, DEPLOYMENT_NAME
 # reporting
 import datetime
 from jinja2 import Template
-#from weasyprint import HTML
 
+from docx import Document
+from docx.shared import Inches, Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.style import WD_STYLE_TYPE
 
 # --------------------------------------------------
 # function definitions
@@ -504,18 +507,54 @@ def analyze_images(image_filenames, added_context):
         "figure": fig
     }
 
+def format_markdown(doc, text):
+    # Split the text into lines
+    lines = text.split('\n')
+    for line in lines:
+        if line.startswith('# '):
+            doc.add_heading(line[2:], level=1)
+        elif line.startswith('## '):
+            doc.add_heading(line[3:], level=2)
+        elif line.startswith('### '):
+            doc.add_heading(line[4:], level=3)
+        elif line.startswith('#### '):
+            doc.add_heading(line[5:], level=4)
+        elif line.startswith('• ') or line.startswith('- '):
+            p = doc.add_paragraph(line[2:], style='List Bullet')
+            if '**' in line:
+                parts = line[2:].split('**')
+                for i, part in enumerate(parts):
+                    if i % 2 == 1:  # Odd parts are bold
+                        p.add_run(part).bold = True
+                    else:
+                        p.add_run(part)
+        elif line.startswith('1. '):
+            doc.add_paragraph(line[3:], style='List Number')
+        elif '**' in line:
+            p = doc.add_paragraph()
+            parts = line.split('**')
+            for i, part in enumerate(parts):
+                if i % 2 == 1:  # Odd parts are bold
+                    p.add_run(part).bold = True
+                else:
+                    p.add_run(part)
+        elif '`' in line:
+            p = doc.add_paragraph()
+            parts = line.split('`')
+            for i, part in enumerate(parts):
+                if i % 2 == 1:  # Odd parts are code
+                    p.add_run(part).font.name = 'Courier New'
+                else:
+                    p.add_run(part)
+        elif ':' in line:
+            key, value = line.split(':', 1)
+            p = doc.add_paragraph()
+            p.add_run(key.strip() + ":").bold = True
+            p.add_run(value.strip())
+        else:
+            doc.add_paragraph(line)
 
 def generate_report(messages, image_filenames):
-    """
-    Generate a report based on the chat history and images.
-
-    Args:
-    messages (list): List of message dictionaries from the session state.
-    image_filenames (list): List of image filenames to include in the report.
-
-    Returns:
-    str: Path to the generated HTML report.
-    """
     # System prompt for the report generation
     system_prompt = """
     You are an AI assistant tasked with creating a comprehensive engineering report based on a chat interaction about numerical simulations. Your report should include:
@@ -526,14 +565,28 @@ def generate_report(messages, image_filenames):
 
     3. Results: Summarize the results of the simulation(s) or comparisons between different simulations. Reference the provided figures in your discussion using [FIGURE1], [FIGURE2], etc.
 
-    Format your response in HTML, using appropriate tags for structure (h1, h2, p, etc.).
+    Format your response using the following markdown-like syntax:
+    - Use '# ' for main sections (Introduction, Methods, Results, Conclusion)
+    - Use '## ' for subsections
+    - Use '### ' for sub-subsections
+    - Use '#### ' for sub-sub-sections
+    - Use '• ' or '- ' for bullet points
+    - Use '1. ' for numbered lists
+    - Use '**bold text**' for emphasis
+    - Use '`code`' for file names or technical terms
+    - Use 'Key: Value' format for parameter listings
+
+    Ensure consistent formatting throughout the report. For simulation parameters, use bullet points with bold keys, like this:
+    • **Parameter Name:** Value
+
+    For file names, use the `code` format.
     """
 
     # Prepare the chat history for the LLM
     chat_history = [msg for msg in messages if msg['role'] != 'system']
 
     # Prepare image information for the LLM
-    image_info = [f"Figure {i+1}: Results from simulation {filename.replace('.png', '')}" for i, filename in enumerate(image_filenames)]
+    image_info = [f"Figure {i+1}: Results from simulation {filename}" for i, filename in enumerate(image_filenames)]
     image_context = "Available figures:\n" + "\n".join(image_info)
 
     # Call the LLM to generate the report content
@@ -548,62 +601,65 @@ def generate_report(messages, image_filenames):
 
     report_content = response.choices[0].message.content
 
-    # Prepare the HTML template
-    html_template = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Simulation Report</title>
-        <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
-            h1 { color: #2c3e50; }
-            h2 { color: #34495e; }
-            img { max-width: 100%; height: auto; display: block; margin: 20px auto; }
-            .image-caption { text-align: center; font-style: italic; margin-bottom: 20px; }
-        </style>
-    </head>
-    <body>
-        <header>
-            <h1>Numerical Simulation Report</h1>
-        </header>
-        <main>
-            {{ content }}
-        </main>
-        <footer>
-            <p>Generated on {{ date }}</p>
-        </footer>
-    </body>
-    </html>
-    """
+    # Create a new Document
+    doc = Document()
 
-    # Replace figure placeholders with base64 encoded images
+    # Update existing styles
+    styles = doc.styles
+    normal_style = styles['Normal']
+    normal_style.font.name = 'Calibri'
+    normal_style.font.size = Pt(11)
+
+    # Create a new style for the title
+    title_style = styles.add_style('CustomTitle', WD_STYLE_TYPE.PARAGRAPH)
+    title_style.base_style = styles['Title']
+    title_style.font.name = 'Calibri'
+    title_style.font.size = Pt(18)
+    title_style.font.bold = True
+
+    # Add title
+    doc.add_paragraph('Numerical Simulation Report', style='CustomTitle')
+
+    # Process and add the LLM-generated content
+    sections = report_content.split('\n\n')
+    for section in sections:
+        format_markdown(doc, section)
+
+    # Add images
     for i, img_filename in enumerate(image_filenames, 1):
         img_path = os.path.join(FIGURE_DIR, img_filename)
-        encoded_image = encode_image(img_path)
-        figure_html = f'''
-        <figure>
-            <img src="data:image/png;base64,{encoded_image}" alt="Figure {i}">
-            <figcaption class="image-caption">Figure {i}: Results from simulation {img_filename.replace(".png", "")}</figcaption>
-        </figure>
-        '''
-        report_content = report_content.replace(f'[FIGURE{i}]', figure_html)
+        doc.add_picture(img_path, width=Inches(6))
+        caption = doc.add_paragraph(f'Figure {i}: Results from simulation {img_filename}')
+        caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    # Render the template
-    template = Template(html_template)
-    filled_template = template.render(
-        content=report_content,
-        date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    )
+        # Replace [FIGURE] placeholders in the content
+        for paragraph in doc.paragraphs:
+            if f'[FIGURE{i}]' in paragraph.text:
+                paragraph.text = paragraph.text.replace(f'[FIGURE{i}]', f'(See Figure {i})')
 
-    # Save as HTML
-    html_filename = f'simulation_report_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.html'
-    html_path = os.path.join(TEMP_DIR, html_filename)
-    with open(html_path, 'w') as f:
-        f.write(filled_template)
+    # Add footer
+    section = doc.sections[0]
+    footer = section.footer
+    footer_para = footer.paragraphs[0]
+    footer_para.text = f"Generated on {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    # Add DHI logo to the header
+    header = section.header
+    header_para = header.paragraphs[0]
+    logo_run = header_para.add_run()
+    logo_path = os.path.join(IMG_DIR, "DHI_Logo_Pos_Black_noMargin.png")
+    logo_run.add_picture(logo_path, width=Inches(1))
+
+    # Save the document
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    docx_filename = f'simulation_report_{timestamp}.docx'
+    docx_path = os.path.join(TEMP_DIR, docx_filename)
+    doc.save(docx_path)
 
     return {
         "message": "Report generated successfully",
-        "file_path": html_path
+        "file_path": docx_path
     }
 
 # --------------------------------------------------

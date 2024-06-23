@@ -71,7 +71,7 @@ st.set_page_config(
 # Load and display the header image
 st.image("simple_mk-assistant/img/zero.png")
 
-with st.expander("ℹ️ MKAssistant"):
+with st.expander("ℹ️ About"):
     st.write(
         """
         This is a conversational AI assistant that helps to build, run 2D numerical fluid simulations with DHIs MIKE21FM software and evaluate them. 
@@ -93,26 +93,26 @@ with st.expander("ℹ️ MKAssistant"):
         * create figures from results from notebook `mike_workflow.ipynb`, `func_helpers.plot_results(simulation, n_times=3)`
         * evaluation of figures with analyze_images(image_files, added_context)`
         * saving message history and loading them from disk
-        * ADD: reporting in markdown and latex for pdf export
+        * reporting in word `generate_report`
         * ADD: extract timeseries data from simulation results
         * ADD: ML prediction from timeseries data
         """
     )
 
-with st.expander("📂 Parameters"):
+with st.expander("📂 Current Parameters"):
     try:
         st.write(st.session_state.params)
     except:
         st.write("No parameters available")
 
-with st.expander("ℹ️ Simulations overview"):
-    if "simulation_overview" in st.session_state:
-        st.write(st.session_state.simulation_overview)
-    else:
-        st.write("No simulation data available")
-
-    if st.button("Refresh Simulation Overview"):
-        refresh_simulation_overview()
+#with st.expander("ℹ️ Simulations overview"):
+#    if "simulation_overview" in st.session_state:
+#        st.write(st.session_state.simulation_overview)
+#    else:
+#        st.write("No simulation data available")#
+#
+#    if st.button("Refresh Simulation Overview"):
+#        refresh_simulation_overview()
 
 # -------------------------------------------
 # message handling and system prompt
@@ -231,15 +231,14 @@ if st.session_state.messages[-1]["role"] != "assistant":
                 elif function_name == "generate_report":
                     report_result = function_response
                     st.success(report_result["message"])
-                    with open(report_result["file_path"], "r") as file:
+                    with open(report_result["file_path"], "rb") as file:
                         st.download_button(
                             label="Download Report",
                             data=file.read(),
                             file_name=os.path.basename(report_result["file_path"]),
-                            mime="text/html"
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         )
-                    add_to_message_history("assistant", "I've generated the report based on our conversation. You can download it using the button above.")
-                # handing dict return from analysis containing figure and text
+                    add_to_message_history("assistant", "I've generated the report based on our conversation. You can download it using the button above.")                # handing dict return from analysis containing figure and text
                 elif function_name == "analyze_images":
                     response_message = function_response["response_message"]
                     figure = function_response["figure"]
