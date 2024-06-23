@@ -5,10 +5,16 @@ import matplotlib.pyplot as plt
 import base64
 
 
+
 # import paths from central config
-from config import BASE_DIR, SIM_DATA_DIR, DOMAIN_DIR, INITIAL_DIR, SETUP_DIR, BOUNDARIES_DIR, RESULTS_DIR, FIGURE_DIR
+from config import BASE_DIR, SIM_DATA_DIR, DOMAIN_DIR, INITIAL_DIR, SETUP_DIR, BOUNDARIES_DIR, RESULTS_DIR, FIGURE_DIR, TEMP_DIR, IMG_DIR
 # import api client from central config
 from config import client, DEPLOYMENT_NAME
+
+# reporting
+import datetime
+from jinja2 import Template
+#from weasyprint import HTML
 
 
 # --------------------------------------------------
@@ -336,9 +342,9 @@ def save_setup(file_path, modified_parameters):
         elif parameter == "number_of_time_steps":
             pfs["FemEngineHD"]["TIME"]["number_of_time_steps"] = value
         elif parameter == "domain_file":
-            pfs["FemEngineHD"]["DOMAIN"]["file_name"] = value
+            pfs["FemEngineHD"]["DOMAIN"]["file_name"] = f"|{value}|"
         elif parameter == "initial_conditions_file":
-            pfs["FemEngineHD"]["HYDRODYNAMIC_MODULE"]["INITIAL_CONDITIONS"]["file_name_2D"] = value
+            pfs["FemEngineHD"]["HYDRODYNAMIC_MODULE"]["INITIAL_CONDITIONS"]["file_name_2D"] = f"|{value}|"
         elif parameter == "manning_number":
             pfs["FemEngineHD"]["HYDRODYNAMIC_MODULE"]["BED_RESISTANCE"]["MANNING_NUMBER"]["constant_value"] = value
         else:
@@ -499,6 +505,106 @@ def analyze_images(image_filenames, added_context):
     }
 
 
+def generate_report(messages, image_filenames):
+    """
+    Generate a report based on the chat history and images.
+
+    Args:
+    messages (list): List of message dictionaries from the session state.
+    image_filenames (list): List of image filenames to include in the report.
+
+    Returns:
+    str: Path to the generated HTML report.
+    """
+    # System prompt for the report generation
+    system_prompt = """
+    You are an AI assistant tasked with creating a comprehensive engineering report based on a chat interaction about numerical simulations. Your report should include:
+
+    1. Introduction: Provide a short outline and motivation for the study. If not explicitly stated, infer the purpose based on the tasks performed and questions asked.
+
+    2. Methods: Summarize the simulation setup, including domains, initial conditions, simulation durations, and time-stepping details.
+
+    3. Results: Summarize the results of the simulation(s) or comparisons between different simulations. Reference the provided figures in your discussion using [FIGURE1], [FIGURE2], etc.
+
+    Format your response in HTML, using appropriate tags for structure (h1, h2, p, etc.).
+    """
+
+    # Prepare the chat history for the LLM
+    chat_history = [msg for msg in messages if msg['role'] != 'system']
+
+    # Prepare image information for the LLM
+    image_info = [f"Figure {i+1}: Results from simulation {filename.replace('.png', '')}" for i, filename in enumerate(image_filenames)]
+    image_context = "Available figures:\n" + "\n".join(image_info)
+
+    # Call the LLM to generate the report content
+    response = client.chat.completions.create(
+        model=DEPLOYMENT_NAME,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Generate a report based on this chat history: {chat_history}\n\n{image_context}"}
+        ],
+        temperature=0.5,
+    )
+
+    report_content = response.choices[0].message.content
+
+    # Prepare the HTML template
+    html_template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Simulation Report</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+            h1 { color: #2c3e50; }
+            h2 { color: #34495e; }
+            img { max-width: 100%; height: auto; display: block; margin: 20px auto; }
+            .image-caption { text-align: center; font-style: italic; margin-bottom: 20px; }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>Numerical Simulation Report</h1>
+        </header>
+        <main>
+            {{ content }}
+        </main>
+        <footer>
+            <p>Generated on {{ date }}</p>
+        </footer>
+    </body>
+    </html>
+    """
+
+    # Replace figure placeholders with base64 encoded images
+    for i, img_filename in enumerate(image_filenames, 1):
+        img_path = os.path.join(FIGURE_DIR, img_filename)
+        encoded_image = encode_image(img_path)
+        figure_html = f'''
+        <figure>
+            <img src="data:image/png;base64,{encoded_image}" alt="Figure {i}">
+            <figcaption class="image-caption">Figure {i}: Results from simulation {img_filename.replace(".png", "")}</figcaption>
+        </figure>
+        '''
+        report_content = report_content.replace(f'[FIGURE{i}]', figure_html)
+
+    # Render the template
+    template = Template(html_template)
+    filled_template = template.render(
+        content=report_content,
+        date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
+
+    # Save as HTML
+    html_filename = f'simulation_report_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.html'
+    html_path = os.path.join(TEMP_DIR, html_filename)
+    with open(html_path, 'w') as f:
+        f.write(filled_template)
+
+    return {
+        "message": "Report generated successfully",
+        "file_path": html_path
+    }
 
 # --------------------------------------------------
 # List of descriptions for all functions
@@ -942,7 +1048,7 @@ function_descriptions.append(
             "properties": {
                 "image_filenames": {
                     "type": "array",
-                    "description": "A list of image filenames to be analyzed.",
+                    "description": "A list of image filenames to be analyzed. There will be an image for each simulation that can comprise multiple timesteps. E.g. named sim__001.png",
                     "items": {
                         "type": "string"
                     }
@@ -974,6 +1080,38 @@ function_descriptions.append(
 )
 
 
+function_descriptions.append(
+    {
+        "name": "generate_report",
+        "description": "Generate a comprehensive report based on the chat history and simulation results.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "role": {"type": "string"},
+                            "content": {"type": "string"}
+                        }
+                    },
+                    "description": "List of message dictionaries from the session state."
+                },
+                "image_filenames": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of image filenames to include in the report."
+                }
+            },
+            "required": ["messages", "image_filenames"]
+        },
+        "returns": {
+            "type": "string",
+            "description": "Path to the generated HTML report."
+        }
+    }
+)
 
 # --------------------------------------------------
 # define available functions. 
@@ -1005,5 +1143,8 @@ available_functions = {
 
     # evaluate
     "analyze_images": analyze_images,
+
+    #
+    "generate_report": generate_report,
 
 }

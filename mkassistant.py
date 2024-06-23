@@ -88,6 +88,7 @@ with st.expander("ℹ️ MKAssistant"):
         * create plotting for mesh and bathymetry `plot_mesh_bathymetry` (check for availability of files first). E.g. "can you plot this?"
         * initial conditions `create_surface_elevation`
         * plot initial conditions `plot_mesh_bathy` (reusing the plotting function for mesh and bathymetry). E.g. "can we create an initial condition with the same nx,ny and a wave of 5 m height and 200 m width on the left?"
+        * create a setup 
         * run simulation(s) `simulate`. Requires `mikesimulation.py`. E.g. "can you run sim_.m21fm?"
         * create figures from results from notebook `mike_workflow.ipynb`, `func_helpers.plot_results(simulation, n_times=3)`
         * evaluation of figures with analyze_images(image_files, added_context)`
@@ -227,6 +228,17 @@ if st.session_state.messages[-1]["role"] != "assistant":
                             st.session_state.params[key] = value
                     else:
                         st.error("Unexpected response format from modify_parameters function")
+                elif function_name == "generate_report":
+                    report_result = function_response
+                    st.success(report_result["message"])
+                    with open(report_result["file_path"], "r") as file:
+                        st.download_button(
+                            label="Download Report",
+                            data=file.read(),
+                            file_name=os.path.basename(report_result["file_path"]),
+                            mime="text/html"
+                        )
+                    add_to_message_history("assistant", "I've generated the report based on our conversation. You can download it using the button above.")
                 # handing dict return from analysis containing figure and text
                 elif function_name == "analyze_images":
                     response_message = function_response["response_message"]
