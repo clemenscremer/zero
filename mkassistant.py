@@ -133,6 +133,7 @@ For this you have access to a set of functions that let you
 7. run simulations.
 8. create figures from simulation results
 9. evaluate result figures and compare multiple results
+10. write a report and export to word
 
 Anything else, e.g. modification of loaded parameters can be done in normal conversations. 
 In case a user needs guidance on building a numerical setup, you can walk him step-by-step through the setup process by either assuming or asking the user for 
@@ -216,11 +217,17 @@ if st.session_state.messages[-1]["role"] != "assistant":
                     add_to_message_history(response_message.role, "Plotting the result")
                 # catch modification of parameters
                 elif function_name == "get_pfs_parameters":
-                    st.write(function_response) # REMOVE LATER
+                    #st.write(function_response) # REMOVE LATER
                     add_to_message_history(response_message.role, function_response)
                     st.session_state.params = function_response
+                elif function_name == "plot_mesh_bathy":
+                    st.pyplot(function_response)
+                    add_to_message_history(response_message.role, "Here is the plot you requested.")
+                elif function_name == "plot_results":
+                    st.pyplot(function_response)
+                    add_to_message_history(response_message.role, "Here is the plot you requested.")
                 elif function_name == "modify_parameters":
-                    st.write(function_response) # REMOVE LATER
+                    #st.write(function_response) # REMOVE LATER
                     add_to_message_history(response_message.role, function_response)
                     # Update only the parameters provided in the function response
                     if isinstance(function_response, dict):
@@ -247,7 +254,7 @@ if st.session_state.messages[-1]["role"] != "assistant":
                     st.pyplot(figure)
                     #st.image(figure, use_column_width=True)
                 else:
-                    st.write(function_response)
+                    #st.write(function_response)
                     add_to_message_history(response_message.role, function_response)
 
                     

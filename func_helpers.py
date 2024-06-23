@@ -345,9 +345,13 @@ def save_setup(file_path, modified_parameters):
         elif parameter == "number_of_time_steps":
             pfs["FemEngineHD"]["TIME"]["number_of_time_steps"] = value
         elif parameter == "domain_file":
-            pfs["FemEngineHD"]["DOMAIN"]["file_name"] = f"|{value}|"
+            #pfs["FemEngineHD"]["DOMAIN"]["file_name"] = f"|{value}|"
+            pfs["FemEngineHD"]["DOMAIN"]["file_name"] = value
+
         elif parameter == "initial_conditions_file":
-            pfs["FemEngineHD"]["HYDRODYNAMIC_MODULE"]["INITIAL_CONDITIONS"]["file_name_2D"] = f"|{value}|"
+            #pfs["FemEngineHD"]["HYDRODYNAMIC_MODULE"]["INITIAL_CONDITIONS"]["file_name_2D"] = f"|{value}|"
+            pfs["FemEngineHD"]["HYDRODYNAMIC_MODULE"]["INITIAL_CONDITIONS"]["file_name_2D"] = value
+
         elif parameter == "manning_number":
             pfs["FemEngineHD"]["HYDRODYNAMIC_MODULE"]["BED_RESISTANCE"]["MANNING_NUMBER"]["constant_value"] = value
         else:

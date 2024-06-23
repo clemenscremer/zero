@@ -1,4 +1,4 @@
-// Created     : 2024-06-23 06:57:48
+// Created     : 2024-06-23 11:34:54
 // By          : MIKE IO
 // Version     : 1.7.1
 
@@ -8,7 +8,7 @@
       discretization = 2
       number_of_dimensions = 2
       number_of_meshes = 1
-      file_name = |..\domain\mesh_bathy_100x30_dx10_reference-20_slope0.4.dfs2|
+      file_name = |..\domain\mesh_bathy_150x30_dx10_reference-30_slope1.0.dfs2|
       type_of_reordering = 1
       number_of_domains = 16
       coordinate_type = 'NON-UTM'
@@ -340,7 +340,7 @@
             Touched = 1
             type = 4
             format = 0
-            constant_value = 12.0
+            constant_value = 32.0
             file_name = ||
             item_number = 1
             item_name = ''
@@ -806,7 +806,7 @@
          u_velocity_constant = 0.0
          v_velocity_constant = 0.0
          w_velocity_constant = 0.0
-         file_name_2D = |..\initial\surface_elevation_100x30_dx10wave7x200left.dfs2|
+         file_name_2D = |..\initial\surface_elevation_150x30_dx10wave7x200left.dfs2|
          surface_elevation_item_no = 1
          item_name_for_surface_elevation = 'Surface elevation'
       EndSect  // INITIAL_CONDITIONS
