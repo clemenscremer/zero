@@ -434,7 +434,7 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
-def analyze_images(image_filenames, added_context):
+def analyze_images(image_filenames, added_context=None):
     """
     Analyzes one or more images using GPT-4.
 

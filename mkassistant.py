@@ -3,8 +3,7 @@ from dotenv import load_dotenv, find_dotenv
 from openai import AzureOpenAI
 import json
 import altair as alt
-from func_helpers import available_functions, function_descriptions # I am "outsourcing" the function implementations and descriptions to a separate file
-#from pfs_helpers import available_functions, function_descriptions
+from func_helpers import available_functions, function_descriptions 
 import matplotlib
 import pandas as pd
 import os
@@ -99,11 +98,11 @@ with st.expander("ℹ️ About"):
         """
     )
 
-with st.expander("📂 Current Parameters"):
-    try:
-        st.write(st.session_state.params)
-    except:
-        st.write("No parameters available")
+#with st.expander("📂 Current Parameters"):
+#    try:
+#        st.write(st.session_state.params)
+#    except:
+#        st.write("No parameters available")
 
 #with st.expander("ℹ️ Simulations overview"):
 #    if "simulation_overview" in st.session_state:
@@ -249,7 +248,7 @@ if st.session_state.messages[-1]["role"] != "assistant":
                 elif function_name == "analyze_images":
                     response_message = function_response["response_message"]
                     figure = function_response["figure"]
-                    #st.write(response_message)
+                    st.write(response_message)
                     add_to_message_history(response_message.role, response_message.content)
                     st.pyplot(figure)
                     #st.image(figure, use_column_width=True)
