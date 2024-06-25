@@ -248,7 +248,7 @@ if st.session_state.messages[-1]["role"] != "assistant":
                 elif function_name == "analyze_images":
                     response_message = function_response["response_message"]
                     figure = function_response["figure"]
-                    st.write(response_message)
+                    #st.write(response_message)
                     add_to_message_history(response_message.role, response_message.content)
                     st.pyplot(figure)
                     #st.image(figure, use_column_width=True)
