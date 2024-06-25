@@ -7,8 +7,8 @@ from func_helpers import available_functions, function_descriptions
 import matplotlib
 import pandas as pd
 import os
-
 import datetime
+
 # import paths from central config
 from config import SIM_DATA_DIR, TEMP_DIR, EXCEL_FILE_PATH
 # import api client from central config
@@ -18,7 +18,6 @@ from PIL import Image
 # Load custom avatar
 assistant_avatar = Image.open("simple_mk-assistant/img/dalle_bot.webp")
 usr_avatar = Image.open("simple_mk-assistant/img/dalle_engineer.webp")
-
 
 # -------------------------------------------
 # frontend helper functions
@@ -57,6 +56,7 @@ def get_message_history_files():
     full_paths = [os.path.join(TEMP_DIR, f) for f in files]
     sorted_files = sorted(full_paths, key=os.path.getmtime, reverse=True)
     return [os.path.basename(f) for f in sorted_files]
+
 # -------------------------------------------
 # streamlit page 
 # -------------------------------------------
@@ -98,21 +98,6 @@ with st.expander("ℹ️ About"):
         """
     )
 
-#with st.expander("📂 Current Parameters"):
-#    try:
-#        st.write(st.session_state.params)
-#    except:
-#        st.write("No parameters available")
-
-#with st.expander("ℹ️ Simulations overview"):
-#    if "simulation_overview" in st.session_state:
-#        st.write(st.session_state.simulation_overview)
-#    else:
-#        st.write("No simulation data available")#
-#
-#    if st.button("Refresh Simulation Overview"):
-#        refresh_simulation_overview()
-
 # -------------------------------------------
 # message handling and system prompt
 # -------------------------------------------
@@ -120,19 +105,18 @@ def add_to_message_history(role: str, content: str) -> None:
     message = {"role": role, "content": str(content)}
     st.session_state.messages.append(message)  
 
-
 sys_prompt = """You are an assistant that helps to build, run 2D numerical fluid simulations with DHIs MIKE21FM software and evaluate them. 
 For this you have access to a set of functions that let you
-1. get an overview of available files, whether setup or boundary conditions or else 
-2. open setup files and return parameters, 
-3. create mesh and bathymetry, 
-4. create initial conditions,
+1. get an overview of available files, whether setup or boundary conditions or else (list_model_files)
+2. open setup files and return parameters (get_pfs_parameters), 
+3. create mesh and bathymetry (create_mesh_bathymetry), 
+4. create initial conditions (create_surface_elevation),
 5. modify parameters 
-6. write to new setup files, which you ONLY use when explicitly prompted by user
-7. run simulations.
-8. create figures from simulation results
-9. evaluate result figures and compare multiple results
-10. write a report and export to word
+6. write to new setup files (save_setup), which you ONLY use when explicitly prompted by user
+7. run simulations (simulate).
+8. create figures from simulation results (plot_results)
+9. evaluate result figures and compare multiple results (analyze_images)
+10. write a report and export to word (generate_report)
 
 Anything else, e.g. modification of loaded parameters can be done in normal conversations. 
 In case a user needs guidance on building a numerical setup, you can walk him step-by-step through the setup process by either assuming or asking the user for 
@@ -150,131 +134,110 @@ if "messages" not in st.session_state.keys():
         {"role": "assistant", "content": "How can i assist?"} # initial message
         )
 
+# Create a container for messages
+message_container = st.container()
 
-# Display the prior chat messages if the role is not function #
-for message in st.session_state.messages:  
-    if message["role"] == "user":
-        with st.chat_message("user", avatar=usr_avatar):
-            st.write(message["content"])        
-    elif message["role"] == "assistant" and message["content"] != None:
-        with st.chat_message("assistant", avatar=assistant_avatar):
-            st.write(message["content"])
-    # else, if message role is function or content is none then pass
-    else:
-        pass
+# Display the prior chat messages
+with message_container:
+    for message in st.session_state.messages:  
+        if message["role"] == "user":
+            with st.chat_message("user", avatar=usr_avatar):
+                st.markdown(message["content"])        
+        elif message["role"] == "assistant" and message["content"] != None:
+            with st.chat_message("assistant", avatar=assistant_avatar):
+                st.markdown(message["content"])
+        # else, if message role is function or content is none then pass
+        else:
+            pass
 
 # handle user input
-if prompt := st.chat_input(
-    "Your question"
-):  # Prompt for user input and save to chat history
+if prompt := st.chat_input("Your question"):
     add_to_message_history("user", prompt)
-    with st.chat_message("user", avatar=usr_avatar):
-        st.write(prompt)
+    with message_container:
+        with st.chat_message("user", avatar=usr_avatar):
+            st.markdown(prompt)
 
 # If last message is not from assistant, generate a new response
 if st.session_state.messages[-1]["role"] != "assistant":
-    with st.chat_message("assistant", avatar=assistant_avatar):
-        with st.spinner("Thinking..."):
-            response = client.chat.completions.create(
-                model=DEPLOYMENT_NAME,
-                messages=st.session_state.messages,
-                temperature=0.0,
-                stream=False,
-                functions=function_descriptions,
-                function_call="auto", 
-                )
-            response_message = response.choices[0].message
-
-            if response_message.function_call:    
-                # Call the function. TODO: Include error handling for non-valid JSON response
-                function_name = response_message.function_call.name
-                function_to_call = available_functions[function_name] 
-                # get well formatted function arguments from llm response
-                function_args = json.loads(response_message.function_call.arguments)
-                # call the function and expose it and arguments in streamlit
-                with st.status(f"Calling function {function_name} with arguments below:"):
-                    st.write(function_args)
-                    function_response = function_to_call(**function_args)
-
-                # Add the assistant response and function response to the messages
-                # NOTE: here not using the add_to_message_history function because function message format is different
-                st.session_state.messages.append( # adding assistant response to messages
-                    {
-                        "role": response_message.role,
-                        "function_call": {
-                            "name": function_name,
-                            "arguments": response_message.function_call.arguments,
-                        },
-                        "content": None
-                    }
-                )
-                # NOTE: manually catching special types of function responses
-                #st.write(str(type (function_response)))
-                # Handle different types of function responses
-                if type(function_response) == 'matplotlib.figure.Figure':
-                    st.pyplot(function_response)
-                    add_to_message_history(response_message.role, "Plotting the result")
-                # catch modification of parameters
-                elif function_name == "get_pfs_parameters":
-                    #st.write(function_response) # REMOVE LATER
-                    add_to_message_history(response_message.role, function_response)
-                    st.session_state.params = function_response
-                elif function_name == "plot_mesh_bathy":
-                    st.pyplot(function_response)
-                    add_to_message_history(response_message.role, "Here is the plot you requested.")
-                elif function_name == "plot_results":
-                    st.pyplot(function_response)
-                    add_to_message_history(response_message.role, "Here is the plot you requested.")
-                elif function_name == "modify_parameters":
-                    #st.write(function_response) # REMOVE LATER
-                    add_to_message_history(response_message.role, function_response)
-                    # Update only the parameters provided in the function response
-                    if isinstance(function_response, dict):
-                        for key, value in function_response.items():
-                            st.session_state.params[key] = value
-                    else:
-                        st.error("Unexpected response format from modify_parameters function")
-                elif function_name == "generate_report":
-                    report_result = function_response
-                    st.success(report_result["message"])
-                    with open(report_result["file_path"], "rb") as file:
-                        st.download_button(
-                            label="Download Report",
-                            data=file.read(),
-                            file_name=os.path.basename(report_result["file_path"]),
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        )
-                    add_to_message_history("assistant", "I've generated the report based on our conversation. You can download it using the button above.")                # handing dict return from analysis containing figure and text
-                elif function_name == "analyze_images":
-                    response_message = function_response["response_message"]
-                    figure = function_response["figure"]
-                    #st.write(response_message)
-                    add_to_message_history(response_message.role, response_message.content)
-                    st.pyplot(figure)
-                    #st.image(figure, use_column_width=True)
-                else:
-                    #st.write(function_response)
-                    add_to_message_history(response_message.role, function_response)
-
-                    
-                # Call the API again to get the final response from the model
-                second_response = client.chat.completions.create(
-                        model=DEPLOYMENT_NAME,
-                        messages=st.session_state.messages,
-                        temperature=0.0,
-                        #stream=False,
+    with message_container:
+        with st.chat_message("assistant", avatar=assistant_avatar):
+            with st.spinner("Thinking..."):
+                response = client.chat.completions.create(
+                    model=DEPLOYMENT_NAME,
+                    messages=st.session_state.messages,
+                    temperature=0.0,
+                    stream=False,
+                    functions=function_descriptions,
+                    function_call="auto", 
                     )
-                second_response_message = second_response.choices[0].message
+                response_message = response.choices[0].message
 
-                add_to_message_history(second_response_message.role, second_response_message.content)
-                st.write(second_response_message.content)
-            else:
-                st.write(str(response_message.content))
-                add_to_message_history(response_message.role, response_message.content) 
-else:
-    pass
+                if response_message.function_call:    
+                    function_name = response_message.function_call.name
+                    function_to_call = available_functions[function_name] 
+                    function_args = json.loads(response_message.function_call.arguments)
+                    with st.status(f"Calling function {function_name} with arguments below:"):
+                        st.write(function_args)
+                        function_response = function_to_call(**function_args)
 
+                    st.session_state.messages.append(
+                        {
+                            "role": response_message.role,
+                            "function_call": {
+                                "name": function_name,
+                                "arguments": response_message.function_call.arguments,
+                            },
+                            "content": None
+                        }
+                    )
 
+                    if isinstance(function_response, matplotlib.figure.Figure):
+                        st.pyplot(function_response)
+                        add_to_message_history(response_message.role, "Plotting the result")
+                    elif function_name == "get_pfs_parameters":
+                        add_to_message_history(response_message.role, function_response)
+                        st.session_state.params = function_response
+                    elif function_name in ["plot_mesh_bathy", "plot_results"]:
+                        st.pyplot(function_response)
+                        add_to_message_history(response_message.role, "Here is the plot you requested.")
+                    elif function_name == "modify_parameters":
+                        add_to_message_history(response_message.role, function_response)
+                        if isinstance(function_response, dict):
+                            for key, value in function_response.items():
+                                st.session_state.params[key] = value
+                        else:
+                            st.error("Unexpected response format from modify_parameters function")
+                    elif function_name == "generate_report":
+                        report_result = function_response
+                        st.success(report_result["message"])
+                        with open(report_result["file_path"], "rb") as file:
+                            st.download_button(
+                                label="Download Report",
+                                data=file.read(),
+                                file_name=os.path.basename(report_result["file_path"]),
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            )
+                        add_to_message_history("assistant", "I've generated the report based on our conversation. You can download it using the button above.")
+                    elif function_name == "analyze_images":
+                        response_message = function_response["response_message"]
+                        figure = function_response["figure"]
+                        add_to_message_history(response_message.role, response_message.content)
+                        st.pyplot(figure)
+                    else:
+                        add_to_message_history(response_message.role, function_response)
+
+                    second_response = client.chat.completions.create(
+                            model=DEPLOYMENT_NAME,
+                            messages=st.session_state.messages,
+                            temperature=0.0,
+                        )
+                    second_response_message = second_response.choices[0].message
+
+                    add_to_message_history(second_response_message.role, second_response_message.content)
+                    st.markdown(second_response_message.content)
+                else:
+                    st.markdown(str(response_message.content))
+                    add_to_message_history(response_message.role, response_message.content) 
 
 with st.sidebar:
     if st.button("Save chat history"):
@@ -298,7 +261,7 @@ with st.sidebar:
             {"role": "assistant", "content": "How can I assist?"} # initial message
         )
         st.experimental_rerun()
+
     with st.expander("Full message history"):
         st.write(len(st.session_state.messages))
         st.write(st.session_state.messages)
-        
